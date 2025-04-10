@@ -6,92 +6,70 @@
     <base target="_blank">
 
     <link rel="stylesheet" href="https://ssl.gstatic.com/docs/script/css/add-ons1.css">
+    <?!= include("common.html") ?>
 
     <style>
-      .alert-danger {
-        color: red;
-        font-weight: bold;
+      .sidebar.bottom {
+        border-top: 1px solid #cecece;
+        background-color: lightgray;
+      }
+      .chat-inputbox {
+        display: flex;
+      }
+      .chat-inputbox input {
+        flex: 1;
+        height: auto;
+      }
+      .chat-inputbox button {
+        flex: 0;
       }
     </style>
 
     <script src="https://assets.lsdsoftware.com/lib/databind.js"></script>
 
     <script>
-      state = null
+      agentConfig = null
+      loadSettings()
 
-      // Use this to call Google Apps Script server functions, like:
-      // await gsRun(runner => runner.serverFunctionName(args...))
-      async function gsRun(run) {
-        return new Promise((f,r) => run(google.script.run.withSuccessHandler(f).withFailureHandler(r)))
+      async function loadSettings() {
+        agentConfig = await gsRun(r => r.getAgentConfig())
       }
 
-      (async function() {
-        state = await gsRun(r => r.getState(null))
-      })();
-
-      async function setPage(page) {
-        state = await gsRun(r => r.getState(page))
-      }
-
-      async function saveAgentConfig(form) {
-        try {
-          await gsRun(r => r.setAgentConfig({
-            name: form.aiModel.options[form.aiModel.selectedIndex].text,
-            model: form.aiModel.value,
-            apiKey: form.apiKey.value.trim()
-          }))
-          form.reset()
-          setPage("CHAT")
-        } catch (err) {
-          state.error = err
-        }
+      async function editSettings() {
+        await gsRun(r => r.showSettingsDialog())
+        addEventListener("focus", () => loadSettings(), {once: true})
       }
 
       async function submitChat(form) {
-        try {
-          console.log(form.message.value)
-          form.reset()
-        } catch (err) {
-          error = err
-        }
+        console.log(form.message.value)
+        form.reset()
       }
     </script>
   </head>
   <body>
-    <div class="sidebar" bind-repeater-if="#state.page == 'CONFIG' ? 1 : 0">
-      <h1>Settings</h1>
-      <form bind-event-submit="this.saveAgentConfig(thisElem); return false">
-        <div class="block form-group">
-          <label>AI Model</label>
-          <select name="aiModel">
-            <option value="openai,gpt-4o">OpenAI GPT-4o</option>
-          </select>
-        </div>
-        <div class="block form-group">
-          <label>API Key</label>
-          <input type="text" name="apiKey" required>
-        </div>
-        <div class="block">
-          <button type="submit" class="action">Save</button>
-        </div>
-        <div class="block alert alert-danger"
-          bind-repeater-if="#state.error ? 1 : 0">{{String(#state.error)}}</div>
-      </form>
+    <div bind-repeater-if="#progress ? 1 : 0">
+      <div class="sidebar">
+        <div class="spinner"></div>
+      </div>
     </div>
 
-    <div class="sidebar branding-below" bind-repeater-if="#state.page == 'CHAT' ? 1 : 0">
-      <div>You're chatting with {{#state.agentName}}
-        (<a href="javascript:void"
-          bind-event-click="this.setPage('CONFIG')">settings</a>).</div>
-    </div>
+    <div bind-repeater-if="!#progress ? 1 : 0">
+      <div class="sidebar branding-below">
+        <span bind-repeater-if="#agentConfig ? 1 : 0">You're chatting with {{#agentConfig.name}}.</span>
+        <span bind-repeater-if="!#agentConfig ? 1 : 0">Click settings to configure your AI assistant.</span>
+        <button type="button"
+          bind-event-click="this.editSettings()">Settings</button>
+      </div>
 
-    <div class="sidebar bottom" bind-repeater-if="#state.page == 'CHAT' ? 1 : 0">
-      <form bind-event-submit="this.submitChat(thisElem); return false">
-        <div class="inline form-group">
-          <input type="text" name="message">
-          <button type="submit" class="action">Submit</button>
-        </div>
-      </form>
+      <div class="sidebar bottom"
+        bind-repeater-if="#agentConfig ? 1 : 0">
+        <form bind-event-submit="this.submitChat(thisElem); return false">
+          <div class="chat-inputbox">
+            <input type="text" name="message">
+            <button type="submit" class="action">Submit</button>
+          </div>
+        </form>
+      </div>
     </div>
   </body>
 </html>

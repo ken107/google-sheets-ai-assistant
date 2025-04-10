@@ -23,26 +23,13 @@ function showSidebar() {
   SpreadsheetApp.getUi().showSidebar(html)
 }
 
-// -------------------------------------------------
-
-function getState(page: "CHAT"|"CONFIG") {
-  const agentConfig = getAgentConfig_()
-  switch (page) {
-    case "CHAT":
-      return agentConfig && {
-        page,
-        agentName: agentConfig.name
-      }
-    case "CONFIG":
-      return {
-        page,
-        agentConfig: agentConfig && {
-          model: agentConfig.model,
-          apiKey: agentConfig.apiKey.slice(0,4) + "*".repeat(agentConfig.apiKey.length-4)
-        }
-      }
-  }
+function showSettingsDialog() {
+  const html = HtmlService.createTemplateFromFile('settings-dialog.html')
+    .evaluate()
+  SpreadsheetApp.getUi().showModalDialog(html, 'AI Assistant Settings')
 }
+
+// -------------------------------------------------
 
 interface AgentConfig {
   name: string
@@ -50,14 +37,24 @@ interface AgentConfig {
   apiKey: string
 }
 
-function setAgentConfig(config: AgentConfig) {
-  PropertiesService.getUserProperties().setProperty("AgentConfig", JSON.stringify(config))
+function setAgentConfig(config: AgentConfig|null) {
+  const props = PropertiesService.getUserProperties()
+  if (config) props.setProperty("agentConfig", JSON.stringify(config))
+  else props.deleteProperty("agentConfig")
+  return getAgentConfig()
 }
 
 function getAgentConfig_() {
-  const value = PropertiesService.getUserProperties().getProperty("AgentConfig")
+  const props = PropertiesService.getUserProperties()
+  const value = props.getProperty("agentConfig")
   if (value) return JSON.parse(value) as AgentConfig
   else return null
+}
+
+function getAgentConfig() {
+  const config = getAgentConfig_()
+  if (config) config.apiKey = config.apiKey.slice(0,4) + "*".repeat(config.apiKey.length-4)
+  return config
 }
 
 function getAIResponse(message: string): string {

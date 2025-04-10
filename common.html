@@ -1,0 +1,54 @@
+<style>
+  .alert {
+    font-weight: bold;
+  }
+  .alert-success {
+    color: rgb(68, 189, 68);
+  }
+  .alert-danger {
+    color: red;
+  }
+
+  .spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
+    border: 3px solid lightgray;
+    border-top: 3px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+</style>
+
+<script>
+  error = null
+  progress = 0
+
+  // Use this to call Google Apps Script server functions, like:
+  // await gsRun(runner => runner.serverFunctionName(args...))
+  async function gsRun(run) {
+    error = null
+    progress++
+    try {
+      const result = await new Promise((f,r) => run(google.script.run.withSuccessHandler(f).withFailureHandler(r)))
+      if (typeof result == "object" && result != null) {
+        if (Array.isArray(result)) return [...result]
+        else return {...result}
+      }
+    } catch (err) {
+      error = err
+      throw err
+    } finally {
+      progress--
+    }
+  }
+
+  function immediate(func) {
+    return func()
+  }
+</script>

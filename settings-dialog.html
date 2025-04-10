@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AI Assistant Chat</title>
+    <meta charset="utf-8">
+    <base target="_blank">
+
+    <link rel="stylesheet" href="https://ssl.gstatic.com/docs/script/css/add-ons1.css">
+    <?!= include("common.html") ?>
+
+    <script src="https://assets.lsdsoftware.com/lib/databind.js"></script>
+
+    <script>
+      agentConfig = null
+
+      immediate(async function() {
+        agentConfig = await gsRun(r => r.getAgentConfig())
+      })
+
+      function populateAgentConfig(form) {
+        if (agentConfig) {
+          form.model.value = agentConfig.model
+          form.apiKey.value = agentConfig.apiKey
+        } else {
+          form.reset()
+        }
+      }
+
+      async function saveAgentConfig(form) {
+        agentConfig = await gsRun(r => r.setAgentConfig({
+          name: form.model.options[form.model.selectedIndex].text,
+          model: form.model.value,
+          apiKey: form.apiKey.value.trim()
+        }))
+        error = "Settings saved."
+      }
+
+      async function deleteAgentConfig(form) {
+        agentConfig = await gsRun(r => r.setAgentConfig(null))
+      }
+    </script>
+  </head>
+  <body>
+    <form bind-statement-1="this.populateAgentConfig(thisElem, #agentConfig)"
+      bind-event-submit="this.saveAgentConfig(thisElem); return false">
+      <div class="block form-group">
+        <label>AI Model</label>
+        <select name="model" required
+          bind-statement-1="thisElem.disabled = !!#progress">
+          <option value="openai,gpt-4o">OpenAI GPT-4o</option>
+        </select>
+      </div>
+      <div class="block form-group">
+        <label>API Key</label>
+        <input type="text" name="apiKey" required
+          bind-statement-1="thisElem.disabled = !!#progress">
+      </div>
+      <div class="block">
+        <button type="submit" class="action"
+          bind-statement-1="thisElem.disabled = !!#progress">Save</button>
+        <button type="button"
+          bind-statement-1="thisElem.disabled = !!#progress"
+          bind-repeater-if="#agentConfig ? 1 : 0"
+          bind-event-click="this.deleteAgentConfig()">Clear settings</button>
+      </div>
+      <div class="block" bind-repeater-if="#progress ? 1 : 0">
+        <div class="spinner"></div>
+      </div>
+      <div bind-repeater-if="#error ? 1 : 0"
+        bind-statement-1="thisElem.className = 'block alert alert-' + (#error instanceof Error ? 'danger' : 'success')">{{String(#error)}}</div>
+    </form>
+  </body>
+</html>
