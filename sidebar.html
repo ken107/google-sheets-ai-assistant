@@ -9,9 +9,34 @@
     <?!= include("common.html") ?>
 
     <style>
-      .sidebar.bottom {
-        border-top: 1px solid #cecece;
-        background-color: lightgray;
+      .sidebar {
+        height: 100%;
+        padding: 0;
+        display: flex;
+        flex-flow: column;
+      }
+      .sidebar > * {
+        flex: 0;
+        padding: 12px;
+      }
+      .sidebar > .chat-log {
+        flex: 1;
+        overflow: auto;
+      }
+      .chat-log .chat-bubble {
+        padding: .5em 1em;
+        border-radius: .5em;
+        background-color: #fff4a5;
+        margin-bottom: 12px;
+        clear: both;
+      }
+      .chat-log .chat-bubble.mine {
+        float: right;
+        background-color: #c2e7ff;
+      }
+      .chat-log .spinner {
+        display: block;
+        clear: both;
       }
       .chat-inputbox {
         display: flex;
@@ -37,39 +62,72 @@
 
       async function editSettings() {
         await gsRun(r => r.showSettingsDialog())
-        addEventListener("focus", () => loadSettings(), {once: true})
+        agentConfig = null
+        progress += 1000
+      }
+
+      async function refresh() {
+        progress -= 1000
+        await loadSettings()
+      }
+
+      function appendChatLog(message, mine) {
+        const bubble = document.createElement("DIV")
+        bubble.className = "chat-bubble"
+        if (mine) bubble.className += " mine"
+        bubble.textContent = message
+        const chatLog = document.querySelector(".chat-log")
+        chatLog.insertBefore(bubble, chatLog.lastElementChild)
       }
 
       async function submitChat(form) {
-        console.log(form.message.value)
+        appendChatLog(form.message.value, true)
         form.reset()
       }
     </script>
   </head>
   <body>
-    <div bind-repeater-if="#progress ? 1 : 0">
-      <div class="sidebar">
-        <div class="spinner"></div>
+    <div class="sidebar"
+      bind-repeater-if="!#agentConfig ? 1 : 0">
+      <div class="alert alert-danger"
+        bind-repeater-if="#error ? 1 : 0">{{String(#error)}}</div>
+      <div class="progress-display"
+        bind-repeater-if="#progress ? 1 : 0">
+        <div class="spinner"
+          bind-repeater-if="#progress &lt; 1000 ? 1 : 0"></div>
+        <button type="button"
+          bind-repeater-if="#progress &gt;= 1000 ? 1 : 0"
+          bind-event-click="this.refresh()">Refresh</button>
+      </div>
+      <div class="setup-prompt"
+        bind-repeater-if="!#progress ? 1 : 0">
+        Click here to <span class="link"
+          bind-event-click="this.editSettings()">set up</span> your AI assistant.
       </div>
     </div>
 
-    <div bind-repeater-if="!#progress ? 1 : 0">
-      <div class="sidebar branding-below">
-        <span bind-repeater-if="#agentConfig ? 1 : 0">You're chatting with {{#agentConfig.name}}.</span>
-        <span bind-repeater-if="!#agentConfig ? 1 : 0">Click settings to configure your AI assistant.</span>
-        <button type="button"
-          bind-event-click="this.editSettings()">Settings</button>
+    <div class="sidebar"
+      bind-repeater-if="#agentConfig ? 1 : 0">
+      <div class="alert alert-danger"
+        bind-repeater-if="#error ? 1 : 0">{{String(#error)}}</div>
+      <div class="chat-log">
+        <div class="chat-bubble">
+          Hi, I'm your AI assistant powered by {{#agentConfig.name}}
+          (<span class="link"
+            bind-statement-1="thisElem.style.pointerEvents = #progress ? 'none' : ''"
+            bind-event-click="this.editSettings()">configure</span>).
+          I can perform spreadsheet operations on your behalf. What would you like to do?
+        </div>
+        <div class="spinner"
+          bind-statement-1="thisElem.style.display = #progress ? '' : 'none'"></div>
       </div>
-
-      <div class="sidebar bottom"
-        bind-repeater-if="#agentConfig ? 1 : 0">
-        <form bind-event-submit="this.submitChat(thisElem); return false">
-          <div class="chat-inputbox">
-            <input type="text" name="message">
-            <button type="submit" class="action">Submit</button>
-          </div>
-        </form>
-      </div>
+      <form class="chat-inputbox"
+        bind-event-submit="this.submitChat(thisElem); return false">
+        <input type="text" name="message" autocomplete="off"
+          bind-statement-1="thisElem.disabled = !!#progress">
+        <button type="submit" class="action"
+          bind-statement-1="thisElem.disabled = !!#progress">Submit</button>
+      </form>
     </div>
   </body>
 </html>
