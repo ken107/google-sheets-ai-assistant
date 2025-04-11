@@ -32,6 +32,8 @@
       }
       .chat-log .chat-bubble.mine {
         float: right;
+        max-width: 90%;
+        box-sizing: border-box;
         background-color: #c2e7ff;
       }
       .chat-log .spinner {
@@ -81,7 +83,10 @@
       }
 
       async function submitChat(form) {
-        appendChatLog(form.message.value, true)
+        const request = form.message.value
+        appendChatLog(request, true)
+        const response = await gsRun(r => r.getAgentResponse(request))
+        appendChatLog(response, false)
         form.reset()
       }
     </script>
@@ -90,7 +95,7 @@
     <div class="sidebar"
       bind-repeater-if="!#agentConfig ? 1 : 0">
       <div class="alert alert-danger"
-        bind-repeater-if="#error ? 1 : 0">{{String(#error)}}</div>
+        bind-repeater-if="#error ? 1 : 0">{{#error.message || 'Unknown error, check console'}}</div>
       <div class="progress-display"
         bind-repeater-if="#progress ? 1 : 0">
         <div class="spinner"

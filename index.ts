@@ -33,44 +33,67 @@ function showSettingsDialog() {
 
 interface AgentConfig {
   name: string
+  provider: 'openai'
   model: string
   apiKey: string
 }
 
 function setAgentConfig(config: AgentConfig|null) {
   const props = PropertiesService.getUserProperties()
-  if (config) props.setProperty("agentConfig", JSON.stringify(config))
-  else props.deleteProperty("agentConfig")
+  if (config) {
+    testAgentConfig(config)
+    props.setProperty("agentConfig", JSON.stringify(config))
+  } else {
+    props.deleteProperty("agentConfig")
+  }
   return getAgentConfig()
 }
 
 function getAgentConfig_() {
   const props = PropertiesService.getUserProperties()
   const value = props.getProperty("agentConfig")
-  if (value) return JSON.parse(value) as AgentConfig
-  else return null
+  if (value) {
+    return JSON.parse(value) as AgentConfig
+  } else {
+    return null
+  }
 }
 
 function getAgentConfig() {
   const config = getAgentConfig_()
-  if (config) config.apiKey = config.apiKey.slice(0,4) + "*".repeat(config.apiKey.length-4)
+  if (config) {
+    config.apiKey = config.apiKey.slice(0,12) + "*".repeat(config.apiKey.length-12)
+  }
   return config
 }
 
-function getAIResponse(message: string): string {
+function testAgentConfig({provider, model, apiKey}: AgentConfig): void {
+  if (provider == 'openai') {
+    UrlFetchApp.fetch('https://api.openai.com/v1/models/' + model, {
+      headers: {
+        'Authorization': 'Bearer ' + apiKey,
+      }
+    })
+  } else {
+    throw new Error('Unknown provider ' + provider)
+  }
+}
+
+// -------------------------------------------------
+
+function getAgentResponse(message: string): string {
   const config = getAgentConfig_()
   if (!config) {
     throw new Error('Missing agent config')
   }
-  const [provider] = config.model.split(",")
-  if (provider == "openai") {
-    return getOpenAIResponse(config.apiKey, config.model, message)
+  switch (config.provider) {
+    case 'openai':
+      return getOpenAIResponse(message, config)
   }
-  throw new Error('Unknown provider ' + provider)
 }
 
-function getOpenAIResponse(apiKey: string, model: string, message: string): string {
-  const response = UrlFetchApp.fetch('https://api.openai.com/v1//completions', {
+function getOpenAIResponse(message: string, {model, apiKey}: AgentConfig): string {
+  const response = UrlFetchApp.fetch('https://api.openai.com/v1/chat/completions', {
     method: 'post',
     contentType: 'application/json',
     headers: {
@@ -79,8 +102,6 @@ function getOpenAIResponse(apiKey: string, model: string, message: string): stri
     payload: JSON.stringify({
       model,
       messages: [{ role: 'user', content: message }],
-      max_tokens: 100,
-      temperature: 0.7,
     })
   })
   const json = JSON.parse(response.getContentText())

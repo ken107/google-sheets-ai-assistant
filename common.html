@@ -7,6 +7,7 @@
 
   .alert {
     font-weight: bold;
+    white-space: pre-wrap;
   }
   .alert-success {
     color: rgb(68, 189, 68);
@@ -43,11 +44,15 @@
     try {
       const result = await new Promise((f,r) => run(google.script.run.withSuccessHandler(f).withFailureHandler(r)))
       if (typeof result == "object" && result != null) {
-        if (Array.isArray(result)) return [...result]
-        else return {...result}
+        return Array.isArray(result) ? [...result] : {...result}
+      } else {
+        return result
       }
     } catch (err) {
-      error = err
+      error = {
+        name: err.name,
+        message: err.message
+      }
       throw err
     } finally {
       progress--

@@ -19,7 +19,7 @@
 
       function populateAgentConfig(form) {
         if (agentConfig) {
-          form.model.value = agentConfig.model
+          form.model.value = agentConfig.provider + ',' + agentConfig.model
           form.apiKey.value = agentConfig.apiKey
         } else {
           form.reset()
@@ -27,12 +27,17 @@
       }
 
       async function saveAgentConfig(form) {
+        const [provider, model] = form.model.value.split(',')
         agentConfig = await gsRun(r => r.setAgentConfig({
           name: form.model.options[form.model.selectedIndex].text,
-          model: form.model.value,
+          provider,
+          model,
           apiKey: form.apiKey.value.trim()
         }))
-        error = "Settings saved."
+        error = {
+          name: "NoError",
+          message: "Settings saved."
+        }
       }
 
       async function deleteAgentConfig(form) {
@@ -52,7 +57,7 @@
       </div>
       <div class="block form-group">
         <label>API Key</label>
-        <input type="text" name="apiKey" required
+        <input type="text" name="apiKey" autocomplete="off" required
           bind-statement-1="thisElem.disabled = !!#progress">
       </div>
       <div class="block">
@@ -63,11 +68,12 @@
           bind-repeater-if="#agentConfig ? 1 : 0"
           bind-event-click="this.deleteAgentConfig()">Clear settings</button>
       </div>
-      <div class="block" bind-repeater-if="#progress ? 1 : 0">
+      <div class="block"
+        bind-repeater-if="#progress ? 1 : 0">
         <div class="spinner"></div>
       </div>
       <div bind-repeater-if="#error ? 1 : 0"
-        bind-statement-1="thisElem.className = 'block alert alert-' + (#error instanceof Error ? 'danger' : 'success')">{{String(#error)}}</div>
+        bind-statement-1="thisElem.className = 'block alert alert-' + (#error.name == 'NoError' ? 'success' : 'danger')">{{#error.message || 'Unknown error, check console'}}</div>
     </form>
   </body>
 </html>
