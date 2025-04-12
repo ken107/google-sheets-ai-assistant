@@ -42,6 +42,8 @@
       }
       .chat-inputbox {
         display: flex;
+        border-top: 1px solid lightgray;
+        border-bottom: 1px solid lightgray;
       }
       .chat-inputbox input {
         flex: 1;
@@ -98,6 +100,7 @@
         bubble.textContent = message
         const chatLog = document.querySelector(".chat-log")
         chatLog.insertBefore(bubble, chatLog.lastElementChild)
+        chatLog.scrollTop = chatLog.scrollHeight
       }
 
       async function submitChat(form) {
@@ -109,6 +112,7 @@
           const response = await getAgentResponse(request)
           appendChatLog(response, false)
           form.reset()
+          setTimeout(() => form.message.focus(), 250)
         } catch (err) {
           error = err
         } finally {
@@ -176,7 +180,7 @@
           I can perform spreadsheet operations on your behalf. What would you like to do?
         </div>
         <div class="spinner"
-          bind-statement-1="thisElem.style.display = #progress ? '' : 'none'"></div>
+          bind-statement-1="thisElem.style.display = #progress ? '' : 'none'; thisElem.parentElement.scrollTop = thisElem.parentElement.scrollHeight"></div>
       </div>
       <form class="chat-inputbox"
         bind-event-submit="this.submitChat(thisElem); return false">
