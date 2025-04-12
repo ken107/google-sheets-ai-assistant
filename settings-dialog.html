@@ -11,10 +11,20 @@
     <script src="https://assets.lsdsoftware.com/lib/databind.js"></script>
 
     <script>
+      error = null
+      progress = 0
       agentConfig = null
 
       immediate(async function() {
-        agentConfig = await gsRun(r => r.getAgentConfig())
+        error = null
+        progress++
+        try {
+          agentConfig = await gsRun(r => r.getAgentConfig())
+        } catch (err) {
+          error = err
+        } finally {
+          progress--
+        }
       })
 
       function populateAgentConfig(form) {
@@ -27,21 +37,61 @@
       }
 
       async function saveAgentConfig(form) {
-        const [provider, model] = form.model.value.split(',')
-        agentConfig = await gsRun(r => r.setAgentConfig({
-          name: form.model.options[form.model.selectedIndex].text,
-          provider,
-          model,
-          apiKey: form.apiKey.value.trim()
-        }))
-        error = {
-          name: "NoError",
-          message: "Settings saved."
+        error = null
+        progress++
+        try {
+          const [provider, model] = form.model.value.split(',')
+          const config = {
+            name: form.model.options[form.model.selectedIndex].text,
+            provider,
+            model,
+            apiKey: form.apiKey.value.trim()
+          }
+          await testAgentConfig(config)
+          await gsRun(r => r.setAgentConfig(config))
+          agentConfig = config
+          error = {
+            name: "NoError",
+            message: "Settings saved."
+          }
+        } catch (err) {
+          error = err
+        } finally {
+          progress--
         }
       }
 
       async function deleteAgentConfig(form) {
-        agentConfig = await gsRun(r => r.setAgentConfig(null))
+        error = null
+        progress++
+        try {
+          await gsRun(r => r.setAgentConfig(null))
+          agentConfig = null
+        } catch (err) {
+          error = err
+        } finally {
+          progress--
+        } 
+      }
+
+      async function testAgentConfig(config) {
+        switch (config.provider) {
+          case 'openai':
+            await testOpenAI(config)
+            break
+          default:
+            throw new Error('Unsupported provider ' + config.provider)
+        }
+      }
+
+      async function testOpenAI({model, apiKey}) {
+        const res = await fetch('https://api.openai.com/v1/models/' + model, {
+          headers: {
+            'Authorization': 'Bearer ' + apiKey
+          }
+        })
+        const json = await res.json()
+        if (!res.ok) throw json.error
       }
     </script>
   </head>

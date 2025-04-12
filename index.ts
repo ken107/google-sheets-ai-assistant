@@ -31,79 +31,21 @@ function showSettingsDialog() {
 
 // -------------------------------------------------
 
-interface AgentConfig {
-  name: string
-  provider: 'openai'
-  model: string
-  apiKey: string
-}
-
-function setAgentConfig(config: AgentConfig|null) {
+function setAgentConfig(config: object) {
   const props = PropertiesService.getUserProperties()
   if (config) {
-    testAgentConfig(config)
     props.setProperty("agentConfig", JSON.stringify(config))
   } else {
     props.deleteProperty("agentConfig")
   }
-  return getAgentConfig()
-}
-
-function getAgentConfig_() {
-  const props = PropertiesService.getUserProperties()
-  const value = props.getProperty("agentConfig")
-  if (value) {
-    return JSON.parse(value) as AgentConfig
-  } else {
-    return null
-  }
 }
 
 function getAgentConfig() {
-  const config = getAgentConfig_()
-  if (config) {
-    config.apiKey = config.apiKey.slice(0,12) + "*".repeat(config.apiKey.length-12)
-  }
-  return config
-}
-
-function testAgentConfig({provider, model, apiKey}: AgentConfig): void {
-  if (provider == 'openai') {
-    UrlFetchApp.fetch('https://api.openai.com/v1/models/' + model, {
-      headers: {
-        'Authorization': 'Bearer ' + apiKey,
-      }
-    })
+  const props = PropertiesService.getUserProperties()
+  const value = props.getProperty("agentConfig")
+  if (value) {
+    return JSON.parse(value)
   } else {
-    throw new Error('Unknown provider ' + provider)
+    return null
   }
-}
-
-// -------------------------------------------------
-
-function getAgentResponse(message: string): string {
-  const config = getAgentConfig_()
-  if (!config) {
-    throw new Error('Missing agent config')
-  }
-  switch (config.provider) {
-    case 'openai':
-      return getOpenAIResponse(message, config)
-  }
-}
-
-function getOpenAIResponse(message: string, {model, apiKey}: AgentConfig): string {
-  const response = UrlFetchApp.fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'post',
-    contentType: 'application/json',
-    headers: {
-      'Authorization': 'Bearer ' + apiKey,
-    },
-    payload: JSON.stringify({
-      model,
-      messages: [{ role: 'user', content: message }],
-    })
-  })
-  const json = JSON.parse(response.getContentText())
-  return json.choices[0].message.content
 }

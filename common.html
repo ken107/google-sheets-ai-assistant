@@ -33,14 +33,9 @@
 </style>
 
 <script>
-  error = null
-  progress = 0
-
   // Use this to call Google Apps Script server functions, like:
   // await gsRun(runner => runner.serverFunctionName(args...))
   async function gsRun(run) {
-    error = null
-    progress++
     try {
       const result = await new Promise((f,r) => run(google.script.run.withSuccessHandler(f).withFailureHandler(r)))
       if (typeof result == "object" && result != null) {
@@ -49,13 +44,11 @@
         return result
       }
     } catch (err) {
-      error = {
+      throw {
         name: err.name,
-        message: err.message
+        message: err.message,
+        stack: err.stack
       }
-      throw err
-    } finally {
-      progress--
     }
   }
 
