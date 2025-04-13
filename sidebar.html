@@ -36,6 +36,10 @@
         box-sizing: border-box;
         background-color: #c2e7ff;
       }
+      .chat-log .chat-bubble.code {
+        white-space: pre;
+        overflow: auto;
+      }
       .chat-log .spinner {
         display: block;
         clear: both;
@@ -57,7 +61,7 @@
     <script src="https://assets.lsdsoftware.com/lib/databind.js"></script>
 
     <script>
-      const systemPrompt = `Using the Google SpreadsheetApp API, provide a code snippet to perform the action requested. Assume the request is with respect to the active cell in the current spreadsheet. If the request is not a valid spreadsheet editing command, say "invalid request". For example,
+      const systemPrompt = `Using the Google SpreadsheetApp API, provide a code snippet to perform the action requested. Assume the request is with respect to the active cell in the current spreadsheet. If the request is not a valid spreadsheet editing command, say invalid request. For example,
 
 User: insert row below
 
@@ -103,10 +107,11 @@ sheet.insertRowAfter(rowIndex);
         await loadSettings()
       }
 
-      function appendChatLog(message, mine) {
+      function appendChatLog(message, {isMine, isCode}) {
         const bubble = document.createElement("DIV")
         bubble.className = "chat-bubble"
-        if (mine) bubble.className += " mine"
+        if (isMine) bubble.className += " mine"
+        if (isCode) bubble.className += " code"
         bubble.textContent = message
         const chatLog = document.querySelector(".chat-log")
         chatLog.insertBefore(bubble, chatLog.lastElementChild)
@@ -118,9 +123,9 @@ sheet.insertRowAfter(rowIndex);
         progress++
         try {
           const request = form.message.value
-          appendChatLog(request, true)
+          appendChatLog(request, {isMine: true})
           const response = await getAgentResponse(request)
-          appendChatLog(response, false)
+          appendChatLog(response.text, {isCode: response.type == "code"})
           form.reset()
           setTimeout(() => form.message.focus(), 250)
         } catch (err) {
@@ -156,7 +161,9 @@ sheet.insertRowAfter(rowIndex);
         })
         const json = await res.json()
         if (!res.ok) throw json.error
-        return json.choices[0].message.content
+        const text = json.choices[0].message.content
+        const match = /```javascript([\s\S]*?)```/.exec(text)
+        return match ? {text: match[1].trim(), type: "code"} : {text, type: "text"}
       }
     </script>
   </head>
