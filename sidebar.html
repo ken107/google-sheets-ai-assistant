@@ -57,6 +57,16 @@
     <script src="https://assets.lsdsoftware.com/lib/databind.js"></script>
 
     <script>
+      const systemPrompt = `Using the Google SpreadsheetApp API, provide a code snippet to perform the action requested. Assume the request is with respect to the active cell in the current spreadsheet. If the request is not a valid spreadsheet editing command, say "invalid request". For example,
+
+User: insert row below
+
+Assistant: \`\`\`javascript
+const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+const rowIndex = sheet.getActiveCell().getRow();
+sheet.insertRowAfter(rowIndex);
+\`\`\``
+
       error = null
       progress = 0
       agentConfig = null
@@ -138,7 +148,10 @@
           },
           body: JSON.stringify({
             model: agentConfig.model,
-            messages: [{ role: 'user', content: message }],
+            messages: [
+              { role: 'developer', content: systemPrompt },
+              { role: 'user', content: message }
+            ],
           })
         })
         const json = await res.json()
