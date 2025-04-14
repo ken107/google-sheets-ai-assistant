@@ -47,9 +47,7 @@
             model,
             apiKey: form.apiKey.value.trim()
           }
-          await testAgentConfig(config)
-          await gsRun(r => r.setAgentConfig(config))
-          agentConfig = config
+          agentConfig = await gsRun(r => r.setAgentConfig(config))
           error = {
             name: "NoError",
             message: "Settings saved."
@@ -71,27 +69,7 @@
           error = err
         } finally {
           progress--
-        } 
-      }
-
-      async function testAgentConfig(config) {
-        switch (config.provider) {
-          case 'openai':
-            await testOpenAI(config)
-            break
-          default:
-            throw new Error('Unsupported provider ' + config.provider)
         }
-      }
-
-      async function testOpenAI({model, apiKey}) {
-        const res = await fetch('https://api.openai.com/v1/models/' + model, {
-          headers: {
-            'Authorization': 'Bearer ' + apiKey
-          }
-        })
-        const json = await res.json()
-        if (!res.ok) throw json.error
       }
     </script>
   </head>

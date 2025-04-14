@@ -61,16 +61,6 @@
     <script src="https://assets.lsdsoftware.com/lib/databind.js"></script>
 
     <script>
-      const systemPrompt = `Using the Google SpreadsheetApp API, provide a code snippet to perform the action requested. Assume the request is with respect to the active cell in the current spreadsheet. If the request is not a valid spreadsheet editing command, say invalid request. For example,
-
-User: insert row below
-
-Assistant: \`\`\`javascript
-const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-const rowIndex = sheet.getActiveCell().getRow();
-sheet.insertRowAfter(rowIndex);
-\`\`\``
-
       error = null
       progress = 0
       agentConfig = null
@@ -124,9 +114,8 @@ sheet.insertRowAfter(rowIndex);
         try {
           const request = form.message.value
           appendChatLog(request, {isMine: true})
-          const response = await getAgentResponse(request)
+          const response = await gsRun(r => r.handleUserRequest(request))
           appendChatLog(response.text, {isCode: response.type == "code"})
-          if (response.type == "code") await executeCode(response.text)
           form.reset()
           setTimeout(() => form.message.focus(), 250)
         } catch (err) {
@@ -134,72 +123,6 @@ sheet.insertRowAfter(rowIndex);
         } finally {
           progress--
         }
-      }
-
-      async function getAgentResponse(message) {
-        switch (agentConfig.provider) {
-          case 'openai':
-            return getOpenAIResponse(message)
-          default:
-            throw new Error("Unsupported provider " + agentConfig.provider)
-        }
-      }
-
-      async function getOpenAIResponse(message) {
-        const res = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'post',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + agentConfig.apiKey
-          },
-          body: JSON.stringify({
-            model: agentConfig.model,
-            messages: [
-              { role: 'developer', content: systemPrompt },
-              { role: 'user', content: message }
-            ],
-          })
-        })
-        const json = await res.json()
-        if (!res.ok) throw json.error
-        const text = json.choices[0].message.content
-        const match = /```javascript([\s\S]*?)```/.exec(text)
-        return match ? {text: match[1].trim(), type: "code"} : {text, type: "text"}
-      }
-
-      async function executeCode(code) {
-        const program = []
-        const SpreadsheetApp = makeStub({program, idGen: makeIdGen()})
-        eval(code)
-        console.debug(code, program)
-        await gsRun(r => r.runProgram(program))
-      }
-
-      function makeStub({program, idGen}) {
-        return new Proxy({d7np4: idGen.next().value}, {
-          get(target, prop, receiver) {
-            switch (prop) {
-              case "d7np4":
-                return target.d7np4
-              default:
-                return function() {
-                  const retVar = makeStub({program, idGen})
-                  program.push({
-                    thisVar: receiver,
-                    method: prop,
-                    args: [...arguments],
-                    retVar
-                  })
-                  return retVar
-                }
-            }
-          }
-        })
-      }
-
-      function *makeIdGen() {
-        let id = 0
-        while (true) yield ++id
       }
     </script>
   </head>
