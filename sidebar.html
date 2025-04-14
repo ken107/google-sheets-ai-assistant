@@ -126,6 +126,7 @@ sheet.insertRowAfter(rowIndex);
           appendChatLog(request, {isMine: true})
           const response = await getAgentResponse(request)
           appendChatLog(response.text, {isCode: response.type == "code"})
+          if (response.type == "code") await executeCode(response.text)
           form.reset()
           setTimeout(() => form.message.focus(), 250)
         } catch (err) {
@@ -164,6 +165,41 @@ sheet.insertRowAfter(rowIndex);
         const text = json.choices[0].message.content
         const match = /```javascript([\s\S]*?)```/.exec(text)
         return match ? {text: match[1].trim(), type: "code"} : {text, type: "text"}
+      }
+
+      async function executeCode(code) {
+        const program = []
+        const SpreadsheetApp = makeStub({program, idGen: makeIdGen()})
+        eval(code)
+        console.debug(code, program)
+        await gsRun(r => r.runProgram(program))
+      }
+
+      function makeStub({program, idGen}) {
+        return new Proxy({d7np4: idGen.next().value}, {
+          get(target, prop, receiver) {
+            switch (prop) {
+              case "d7np4":
+                return target.d7np4
+              default:
+                return function() {
+                  const retVar = makeStub({program, idGen})
+                  program.push({
+                    thisVar: receiver,
+                    method: prop,
+                    args: [...arguments],
+                    retVar
+                  })
+                  return retVar
+                }
+            }
+          }
+        })
+      }
+
+      function *makeIdGen() {
+        let id = 0
+        while (true) yield ++id
       }
     </script>
   </head>
