@@ -80,6 +80,9 @@ function testAgentConfig_(config: AgentConfig) {
     case 'xai':
       testXAI_(config)
       break
+    case 'deepseek':
+      testDeepSeek_(config)
+      break
     default:
       throw new Error('Unsupported provider ' + config.provider)
   }
@@ -111,9 +114,29 @@ function testXAI_(config: AgentConfig) {
   }
 }
 
+function testDeepSeek_(config: AgentConfig) {
+  const res = UrlFetchApp.fetch('https://api.deepseek.com/models', {
+    headers: {
+      'Authorization': 'Bearer ' + config.apiKey
+    },
+    muteHttpExceptions: true
+  })
+  const json = JSON.parse(res.getContentText())
+  if (res.getResponseCode() >= 400) {
+    throw new Error(json.error.message)
+  }
+  if (!json.data.some((model: { id: string }) => model.id === config.model)) {
+    throw new Error('Model ' + config.model + ' not found')
+  }
+}
+
 // -------------------------------------------------
 
-const systemPrompt = `Using the Google SpreadsheetApp API, provide a code snippet to perform the action requested. Assume the request is with respect to the active cell in the current spreadsheet. If the user request cannot be fulfilled, explain why. For example,
+const systemPrompt = `\
+Using the Google SpreadsheetApp API, provide only a code snippet to perform the action requested. \
+Assume the request is with respect to the active cell in the current spreadsheet. \
+If the user request cannot be fulfilled, show them how to do it via the UI. \
+For example,
 
 User: insert row below
 
@@ -143,6 +166,8 @@ function getAgentResponse_(request: string): AgentResponse {
       return getOpenAIResponse_(request, config)
     case 'xai':
       return getXAIResponse_(request, config)
+    case 'deepseek':
+      return getDeepSeekResponse_(request, config)
     default:
       throw new Error("Unsupported provider " + config?.provider)
   }
@@ -192,6 +217,31 @@ function getXAIResponse_(request: string, config: AgentConfig): AgentResponse {
   const json = JSON.parse(res.getContentText())
   if (res.getResponseCode() >= 400) {
     throw new Error(json.error)
+  }
+  const text = json.choices[0].message.content
+  const match = /```javascript([\s\S]*?)```/.exec(text)
+  return match ? {text: match[1].trim(), type: "code"} : {text, type: "text"}
+}
+
+function getDeepSeekResponse_(request: string, config: AgentConfig): AgentResponse {
+  const res = UrlFetchApp.fetch('https://api.deepseek.com/chat/completions', {
+    method: 'post',
+    contentType: 'application/json',
+    headers: {
+      'Authorization': 'Bearer ' + config.apiKey
+    },
+    payload: JSON.stringify({
+      model: config.model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: request }
+      ]
+    }),
+    muteHttpExceptions: true
+  })
+  const json = JSON.parse(res.getContentText())
+  if (res.getResponseCode() >= 400) {
+    throw new Error(json.error.message)
   }
   const text = json.choices[0].message.content
   const match = /```javascript([\s\S]*?)```/.exec(text)
