@@ -77,6 +77,9 @@ function testAgentConfig_(config: AgentConfig) {
     case 'openai':
       testOpenAI_(config)
       break
+    case 'xai':
+      testXAI_(config)
+      break
     default:
       throw new Error('Unsupported provider ' + config.provider)
   }
@@ -95,9 +98,22 @@ function testOpenAI_(config: AgentConfig) {
   }
 }
 
+function testXAI_(config: AgentConfig) {
+  const res = UrlFetchApp.fetch('https://api.x.ai/v1/models/' + config.model, {
+    headers: {
+      'Authorization': 'Bearer ' + config.apiKey
+    },
+    muteHttpExceptions: true
+  })
+  const json = JSON.parse(res.getContentText())
+  if (res.getResponseCode() >= 400) {
+    throw new Error(json.error)
+  }
+}
+
 // -------------------------------------------------
 
-const systemPrompt = `Using the Google SpreadsheetApp API, provide a code snippet to perform the action requested. Assume the request is with respect to the active cell in the current spreadsheet. If the request is not a valid spreadsheet editing command, say invalid request. For example,
+const systemPrompt = `Using the Google SpreadsheetApp API, provide a code snippet to perform the action requested. Assume the request is with respect to the active cell in the current spreadsheet. If the user request cannot be fulfilled, explain why. For example,
 
 User: insert row below
 
@@ -125,6 +141,8 @@ function getAgentResponse_(request: string): AgentResponse {
   switch (config?.provider) {
     case 'openai':
       return getOpenAIResponse_(request, config)
+    case 'xai':
+      return getXAIResponse_(request, config)
     default:
       throw new Error("Unsupported provider " + config?.provider)
   }
@@ -149,6 +167,31 @@ function getOpenAIResponse_(request: string, config: AgentConfig): AgentResponse
   const json = JSON.parse(res.getContentText())
   if (res.getResponseCode() >= 400) {
     throw new Error(json.error.message)
+  }
+  const text = json.choices[0].message.content
+  const match = /```javascript([\s\S]*?)```/.exec(text)
+  return match ? {text: match[1].trim(), type: "code"} : {text, type: "text"}
+}
+
+function getXAIResponse_(request: string, config: AgentConfig): AgentResponse {
+  const res = UrlFetchApp.fetch('https://api.x.ai/v1/chat/completions', {
+    method: 'post',
+    contentType: 'application/json',
+    headers: {
+      'Authorization': 'Bearer ' + config.apiKey
+    },
+    payload: JSON.stringify({
+      model: config.model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: request }
+      ]
+    }),
+    muteHttpExceptions: true
+  })
+  const json = JSON.parse(res.getContentText())
+  if (res.getResponseCode() >= 400) {
+    throw new Error(json.error)
   }
   const text = json.choices[0].message.content
   const match = /```javascript([\s\S]*?)```/.exec(text)
