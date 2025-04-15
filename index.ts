@@ -132,7 +132,7 @@ function testDeepSeek_(config: AgentConfig) {
 
 // -------------------------------------------------
 
-const systemPrompt = `Provide an Apps Script code snippet to perform the requested action. \
+const systemPrompt = `Using the Google SpreadsheetApp API, provide only a code snippet to perform the action requested. \
 Assume the request is with respect to the active cell in the current spreadsheet. \
 If the request cannot be satisfied, say so.`
 
