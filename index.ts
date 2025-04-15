@@ -132,34 +132,24 @@ function testDeepSeek_(config: AgentConfig) {
 
 // -------------------------------------------------
 
-const systemPrompt = `\
-Using the Google SpreadsheetApp API, provide only a code snippet to perform the action requested. \
+const systemPrompt = `Provide an Apps Script code snippet to perform the requested action. \
 Assume the request is with respect to the active cell in the current spreadsheet. \
-If the user request cannot be fulfilled, show them how to do it via the UI. \
-For example,
+If the request cannot be satisfied, say so.`
 
-User: insert row below
-
-Assistant: \`\`\`javascript
-const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-const rowIndex = sheet.getActiveCell().getRow();
-sheet.insertRowAfter(rowIndex);
-\`\`\``
-
-interface AgentResponse {
-  text: string
-  type: "text"|"code"
-}
-
-function handleUserRequest(request: string): AgentResponse {
+function handleUserRequest(request: string): string {
   const response = getAgentResponse_(request)
-  if (response.type == "code") {
-    eval(response.text)
+  const code = getCode_(response)
+  if (code) {
+    try {
+      eval(code)
+    } catch (err) {
+      return String(err)
+    }
   }
   return response
 }
 
-function getAgentResponse_(request: string): AgentResponse {
+function getAgentResponse_(request: string): string {
   const config = getAgentConfig_()
   switch (config?.provider) {
     case 'openai':
@@ -173,7 +163,7 @@ function getAgentResponse_(request: string): AgentResponse {
   }
 }
 
-function getOpenAIResponse_(request: string, config: AgentConfig): AgentResponse {
+function getOpenAIResponse_(request: string, config: AgentConfig): string {
   const res = UrlFetchApp.fetch('https://api.openai.com/v1/chat/completions', {
     method: 'post',
     contentType: 'application/json',
@@ -193,12 +183,10 @@ function getOpenAIResponse_(request: string, config: AgentConfig): AgentResponse
   if (res.getResponseCode() >= 400) {
     throw new Error(json.error.message)
   }
-  const text = json.choices[0].message.content
-  const match = /```javascript([\s\S]*?)```/.exec(text)
-  return match ? {text: match[1].trim(), type: "code"} : {text, type: "text"}
+  return json.choices[0].message.content
 }
 
-function getXAIResponse_(request: string, config: AgentConfig): AgentResponse {
+function getXAIResponse_(request: string, config: AgentConfig): string {
   const res = UrlFetchApp.fetch('https://api.x.ai/v1/chat/completions', {
     method: 'post',
     contentType: 'application/json',
@@ -218,12 +206,10 @@ function getXAIResponse_(request: string, config: AgentConfig): AgentResponse {
   if (res.getResponseCode() >= 400) {
     throw new Error(json.error)
   }
-  const text = json.choices[0].message.content
-  const match = /```javascript([\s\S]*?)```/.exec(text)
-  return match ? {text: match[1].trim(), type: "code"} : {text, type: "text"}
+  return json.choices[0].message.content
 }
 
-function getDeepSeekResponse_(request: string, config: AgentConfig): AgentResponse {
+function getDeepSeekResponse_(request: string, config: AgentConfig): string {
   const res = UrlFetchApp.fetch('https://api.deepseek.com/chat/completions', {
     method: 'post',
     contentType: 'application/json',
@@ -243,7 +229,20 @@ function getDeepSeekResponse_(request: string, config: AgentConfig): AgentRespon
   if (res.getResponseCode() >= 400) {
     throw new Error(json.error.message)
   }
-  const text = json.choices[0].message.content
-  const match = /```javascript([\s\S]*?)```/.exec(text)
-  return match ? {text: match[1].trim(), type: "code"} : {text, type: "text"}
+  return json.choices[0].message.content
+}
+
+function getCode_(response: string): string|null {
+  let match = /```javascript([\s\S]*?)```/.exec(response)
+  if (match) {
+    const code = match[1].trim()
+    match = /\bfunction (\w+)/.exec(code)
+    if (match) {
+      return code + '\n' + match[1] + '()'
+    } else {
+      return code
+    }
+  } else {
+    return null
+  }
 }

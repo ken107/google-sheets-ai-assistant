@@ -115,7 +115,7 @@
           const request = form.message.value
           appendChatLog(request, {isMine: true})
           const response = await gsRun(r => r.handleUserRequest(request))
-          appendChatLog(response.text, {isCode: response.type == "code"})
+          appendChatLog(response, {isCode: response.includes('```')})
           form.reset()
           setTimeout(() => form.message.focus(), 250)
         } catch (err) {
