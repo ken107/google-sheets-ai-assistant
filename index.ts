@@ -83,6 +83,9 @@ function testAgentConfig_(config: AgentConfig) {
     case 'deepseek':
       testDeepSeek_(config)
       break
+    case 'claude':
+      testClaude_(config)
+      break
     default:
       throw new Error('Unsupported provider ' + config.provider)
   }
@@ -130,6 +133,20 @@ function testDeepSeek_(config: AgentConfig) {
   }
 }
 
+function testClaude_(config: AgentConfig) {
+  const res = UrlFetchApp.fetch('https://api.anthropic.com/v1/models/' + config.model, {
+    headers: {
+      'x-api-key': config.apiKey,
+      'anthropic-version': '2023-06-01'
+    },
+    muteHttpExceptions: true
+  })
+  const json = JSON.parse(res.getContentText())
+  if (res.getResponseCode() >= 400) {
+    throw new Error(json.error?.message || json.error || 'Claude API error')
+  }
+}
+
 // -------------------------------------------------
 
 const systemPrompt = `Using the Google SpreadsheetApp API, provide only a code snippet to perform the action requested. \
@@ -158,6 +175,8 @@ function getAgentResponse_(request: string): string {
       return getXAIResponse_(request, config)
     case 'deepseek':
       return getDeepSeekResponse_(request, config)
+    case 'claude':
+      return getClaudeResponse_(request, config)
     default:
       throw new Error("Unsupported provider " + config?.provider)
   }
@@ -230,6 +249,34 @@ function getDeepSeekResponse_(request: string, config: AgentConfig): string {
     throw new Error(json.error.message)
   }
   return json.choices[0].message.content
+}
+
+function getClaudeResponse_(request: string, config: AgentConfig): string {
+  const res = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
+    method: 'post',
+    contentType: 'application/json',
+    headers: {
+      'x-api-key': config.apiKey,
+      'anthropic-version': '2023-06-01'
+    },
+    payload: JSON.stringify({
+      model: config.model,
+      max_tokens: 1024,
+      messages: [
+        { role: 'user', content: `${systemPrompt}\n${request}` }
+      ]
+    }),
+    muteHttpExceptions: true
+  })
+  const json = JSON.parse(res.getContentText())
+  if (res.getResponseCode() >= 400) {
+    throw new Error(json.error?.message || json.error || 'Claude API error')
+  }
+  // Claude's response is in json.content (array of message parts)
+  if (json.content && Array.isArray(json.content) && json.content.length > 0 && json.content[0].text) {
+    return json.content[0].text
+  }
+  return JSON.stringify(json)
 }
 
 function getCode_(response: string): string|null {
