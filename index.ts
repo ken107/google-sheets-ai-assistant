@@ -86,6 +86,9 @@ function testAgentConfig_(config: AgentConfig) {
     case 'claude':
       testClaude_(config)
       break
+    case 'gemini':
+      testGemini_(config)
+      break
     default:
       throw new Error('Unsupported provider ' + config.provider)
   }
@@ -147,6 +150,16 @@ function testClaude_(config: AgentConfig) {
   }
 }
 
+function testGemini_(config: AgentConfig) {
+  const res = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models/' + config.model + "?key=" + config.apiKey, {
+    muteHttpExceptions: true
+  })
+  const json = JSON.parse(res.getContentText())
+  if (res.getResponseCode() >= 400) {
+    throw new Error(json.error?.message || json.error || 'Gemini API error')
+  }
+}
+
 // -------------------------------------------------
 
 const systemPrompt = `Using the Google SpreadsheetApp API, provide only a code snippet to perform the action requested. \
@@ -177,6 +190,8 @@ function getAgentResponse_(request: string): string {
       return getDeepSeekResponse_(request, config)
     case 'claude':
       return getClaudeResponse_(request, config)
+    case 'gemini':
+      return getGeminiResponse_(request, config)
     default:
       throw new Error("Unsupported provider " + config?.provider)
   }
@@ -262,8 +277,9 @@ function getClaudeResponse_(request: string, config: AgentConfig): string {
     payload: JSON.stringify({
       model: config.model,
       max_tokens: 1024,
+      system: systemPrompt,
       messages: [
-        { role: 'user', content: `${systemPrompt}\n${request}` }
+        { role: 'user', content: request }
       ]
     }),
     muteHttpExceptions: true
@@ -275,6 +291,31 @@ function getClaudeResponse_(request: string, config: AgentConfig): string {
   // Claude's response is in json.content (array of message parts)
   if (json.content && Array.isArray(json.content) && json.content.length > 0 && json.content[0].text) {
     return json.content[0].text
+  }
+  return JSON.stringify(json)
+}
+
+function getGeminiResponse_(request: string, config: AgentConfig): string {
+  const res = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models/' + config.model + ':generateContent?key=' + config.apiKey, {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify({
+      system_instruction: {
+        parts: [{ text: systemPrompt }]
+      },
+      contents: [
+        { role: 'user', parts: [{ text: request }] }
+      ]
+    }),
+    muteHttpExceptions: true
+  })
+  const json = JSON.parse(res.getContentText())
+  if (res.getResponseCode() >= 400) {
+    throw new Error(json.error?.message || json.error || 'Gemini API error')
+  }
+  // Gemini's response is in json.candidates[0].content.parts[0].text
+  if (json.candidates && json.candidates.length > 0 && json.candidates[0].content && json.candidates[0].content.parts && json.candidates[0].content.parts.length > 0 && json.candidates[0].content.parts[0].text) {
+    return json.candidates[0].content.parts[0].text
   }
   return JSON.stringify(json)
 }
