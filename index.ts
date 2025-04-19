@@ -41,6 +41,14 @@ interface AgentConfig {
 function setAgentConfig(config: AgentConfig|null): ReturnType<typeof getAgentConfig> {
   const props = PropertiesService.getUserProperties()
   if (config) {
+    if (config.apiKey.slice(8, 15) == '*******') {
+      const currentConfig = getAgentConfig_()
+      if (currentConfig) {
+        config.apiKey = currentConfig.apiKey
+      } else {
+        throw new Error('Please provide the complete API key')
+      }
+    }
     testAgentConfig_(config)
     props.setProperty("agentConfig", JSON.stringify(config))
     return getAgentConfig()
@@ -65,7 +73,7 @@ function getAgentConfig(): AgentConfig|null {
   if (config) {
     return {
       ...config,
-      apiKey: config.apiKey.slice(0,8) + '*******' + config.apiKey.slice(-4)
+      apiKey: config.apiKey.slice(0, 8) + '*******' + config.apiKey.slice(-4)
     }
   } else {
     return null
