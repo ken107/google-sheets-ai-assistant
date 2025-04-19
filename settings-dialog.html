@@ -8,6 +8,12 @@
     <link rel="stylesheet" href="https://ssl.gstatic.com/docs/script/css/add-ons1.css">
     <?!= include("common.html") ?>
 
+    <style>
+      select {
+        text-align: left;
+      }
+    </style>
+
     <script src="https://assets.lsdsoftware.com/lib/databind.js"></script>
     <?!= settingsScript() ?>
 
@@ -17,10 +23,31 @@
 
       function populateAgentConfig(form) {
         if (agentConfig) {
-          form.model.value = agentConfig.provider + ',' + agentConfig.model
+          form.provider.value = agentConfig.provider
+          form.model.value = agentConfig.model
           form.apiKey.value = agentConfig.apiKey
         } else {
           form.reset()
+        }
+      }
+
+      function onProviderChange(form) {
+        switch (form.provider.value) {
+          case 'google':
+            form.model.value = 'gemini-2.0-flash-lite'
+            break
+          case 'openai':
+            form.model.value = 'gpt-4.1-nano'
+            break
+          case 'anthropic':
+            form.model.value = 'claude-3-5-haiku-latest'
+            break
+          case 'deepseek':
+            form.model.value = 'deepseek-chat'
+            break
+          case 'xai':
+            form.model.value = 'grok-3-fast'
+            break
         }
       }
 
@@ -28,11 +55,10 @@
         error = null
         progress++
         try {
-          const [provider, model] = form.model.value.split(',')
           const config = {
-            name: form.model.options[form.model.selectedIndex].text,
-            provider,
-            model,
+            name: form.provider.options[form.provider.selectedIndex].text,
+            provider: form.provider.value,
+            model: form.model.value.trim(),
             apiKey: form.apiKey.value.trim()
           }
           agentConfig = await gsRun(r => r.setAgentConfig(config))
@@ -65,15 +91,22 @@
     <form bind-statement-1="this.populateAgentConfig(thisElem, #agentConfig)"
       bind-event-submit="this.saveAgentConfig(thisElem); return false">
       <div class="block form-group">
-        <label>AI Model</label>
-        <select name="model" required
-          bind-statement-1="thisElem.disabled = !!#progress">
-          <option value="gemini,gemini-2.0-flash-lite">Google Gemini 2.0 Flash Lite</option>
-          <option value="openai,gpt-4.1-nano">OpenAI GPT-4.1 Nano</option>
-          <option value="claude,claude-3-5-haiku-20241022">Anthropic Claude 3.5 Haiku</option>
-          <option value="deepseek,deepseek-chat">DeepSeek V3</option>
-          <option value="grok,grok-3-mini-fast-beta">xAI Grok-3 Mini Fast</option>
+        <label>Provider</label>
+        <select name="provider" required
+          bind-statement-1="thisElem.disabled = !!#progress"
+          bind-event-change="this.onProviderChange(thisElem.form)">
+          <option value=""></option>
+          <option value="google">Google</option>
+          <option value="openai">OpenAI</option>
+          <option value="anthropic">Anthropic</option>
+          <option value="deepseek">DeepSeek</option>
+          <option value="xai">xAI</option>
         </select>
+      </div>
+      <div class="block form-group">
+        <label>Model</label>
+        <input type="text" name="model" required
+          bind-statement-1="thisElem.disabled = !!#progress">
       </div>
       <div class="block form-group">
         <label>API Key</label>

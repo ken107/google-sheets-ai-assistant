@@ -151,7 +151,7 @@
         bind-repeater-if="#error ? 1 : 0">{{#error.message || 'Unknown error, check console'}}</div>
       <div class="chat-log">
         <div class="chat-bubble">
-          Hi, I'm your AI assistant powered by {{#agentConfig.name}}
+          Hi, I'm your AI assistant powered by {{#agentConfig.name}} {{#agentConfig.model}}
           (<span class="link"
             bind-statement-1="thisElem.style.pointerEvents = #progress ? 'none' : ''"
             bind-event-click="this.editSettings()">configure</span>).

@@ -40,7 +40,7 @@ function settingsScript() {
 
 interface AgentConfig {
   name: string
-  provider: string
+  provider: 'openai' | 'xai' | 'deepseek' | 'anthropic' | 'google'
   model: string
   apiKey: string
 }
@@ -92,16 +92,16 @@ function testAgentConfig_(config: AgentConfig) {
     case 'openai':
       testOpenAI_(config)
       break
-    case 'grok':
+    case 'xai':
       testGrok_(config)
       break
     case 'deepseek':
       testDeepSeek_(config)
       break
-    case 'claude':
+    case 'anthropic':
       testClaude_(config)
       break
-    case 'gemini':
+    case 'google':
       testGemini_(config)
       break
     default:
@@ -118,7 +118,7 @@ function testOpenAI_(config: AgentConfig) {
   })
   const json = JSON.parse(res.getContentText())
   if (res.getResponseCode() >= 400) {
-    throw new Error(json.error.message)
+    throw new Error(json.error?.message || json.error || 'OpenAI API error')
   }
 }
 
@@ -131,7 +131,7 @@ function testGrok_(config: AgentConfig) {
   })
   const json = JSON.parse(res.getContentText())
   if (res.getResponseCode() >= 400) {
-    throw new Error(json.error)
+    throw new Error(json.error?.message || json.error || 'Grok API error')
   }
 }
 
@@ -144,7 +144,7 @@ function testDeepSeek_(config: AgentConfig) {
   })
   const json = JSON.parse(res.getContentText())
   if (res.getResponseCode() >= 400) {
-    throw new Error(json.error.message)
+    throw new Error(json.error?.message || json.error || 'DeepSeek API error')
   }
   if (!json.data.some((model: { id: string }) => model.id === config.model)) {
     throw new Error('Model ' + config.model + ' not found')
@@ -196,19 +196,22 @@ function handleUserRequest(request: string): string {
 
 function getAgentResponse_(request: string): string {
   const config = getAgentConfig_()
-  switch (config?.provider) {
+  if (!config) {
+    throw new Error('Agent config not found')
+  }
+  switch (config.provider) {
     case 'openai':
       return getOpenAIResponse_(request, config)
-    case 'grok':
+    case 'xai':
       return getGrokResponse_(request, config)
     case 'deepseek':
       return getDeepSeekResponse_(request, config)
-    case 'claude':
+    case 'anthropic':
       return getClaudeResponse_(request, config)
-    case 'gemini':
+    case 'google':
       return getGeminiResponse_(request, config)
     default:
-      throw new Error("Unsupported provider " + config?.provider)
+      throw new Error("Unsupported provider " + config.provider)
   }
 }
 
@@ -230,7 +233,7 @@ function getOpenAIResponse_(request: string, config: AgentConfig): string {
   })
   const json = JSON.parse(res.getContentText())
   if (res.getResponseCode() >= 400) {
-    throw new Error(json.error.message)
+    throw new Error(json.error?.message || json.error || 'OpenAI API error')
   }
   return json.choices[0].message.content
 }
@@ -253,7 +256,7 @@ function getGrokResponse_(request: string, config: AgentConfig): string {
   })
   const json = JSON.parse(res.getContentText())
   if (res.getResponseCode() >= 400) {
-    throw new Error(json.error)
+    throw new Error(json.error?.message || json.error || 'Grok API error')
   }
   return json.choices[0].message.content
 }
@@ -276,7 +279,7 @@ function getDeepSeekResponse_(request: string, config: AgentConfig): string {
   })
   const json = JSON.parse(res.getContentText())
   if (res.getResponseCode() >= 400) {
-    throw new Error(json.error.message)
+    throw new Error(json.error?.message || json.error || 'DeepSeek API error')
   }
   return json.choices[0].message.content
 }
