@@ -29,6 +29,13 @@ function showSettingsDialog() {
   SpreadsheetApp.getUi().showModalDialog(html, 'AI Assistant Settings')
 }
 
+function settingsScript() {
+  return `
+<script>
+  agentConfig = ${JSON.stringify(getAgentConfig())}
+</script>`
+}
+
 // -------------------------------------------------
 
 interface AgentConfig {
@@ -85,8 +92,8 @@ function testAgentConfig_(config: AgentConfig) {
     case 'openai':
       testOpenAI_(config)
       break
-    case 'xai':
-      testXAI_(config)
+    case 'grok':
+      testGrok_(config)
       break
     case 'deepseek':
       testDeepSeek_(config)
@@ -115,7 +122,7 @@ function testOpenAI_(config: AgentConfig) {
   }
 }
 
-function testXAI_(config: AgentConfig) {
+function testGrok_(config: AgentConfig) {
   const res = UrlFetchApp.fetch('https://api.x.ai/v1/models/' + config.model, {
     headers: {
       'Authorization': 'Bearer ' + config.apiKey
@@ -192,8 +199,8 @@ function getAgentResponse_(request: string): string {
   switch (config?.provider) {
     case 'openai':
       return getOpenAIResponse_(request, config)
-    case 'xai':
-      return getXAIResponse_(request, config)
+    case 'grok':
+      return getGrokResponse_(request, config)
     case 'deepseek':
       return getDeepSeekResponse_(request, config)
     case 'claude':
@@ -228,7 +235,7 @@ function getOpenAIResponse_(request: string, config: AgentConfig): string {
   return json.choices[0].message.content
 }
 
-function getXAIResponse_(request: string, config: AgentConfig): string {
+function getGrokResponse_(request: string, config: AgentConfig): string {
   const res = UrlFetchApp.fetch('https://api.x.ai/v1/chat/completions', {
     method: 'post',
     contentType: 'application/json',

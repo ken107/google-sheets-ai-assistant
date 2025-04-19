@@ -9,23 +9,11 @@
     <?!= include("common.html") ?>
 
     <script src="https://assets.lsdsoftware.com/lib/databind.js"></script>
+    <?!= settingsScript() ?>
 
     <script>
       error = null
       progress = 0
-      agentConfig = null
-
-      immediate(async function() {
-        error = null
-        progress++
-        try {
-          agentConfig = await gsRun(r => r.getAgentConfig())
-        } catch (err) {
-          error = err
-        } finally {
-          progress--
-        }
-      })
 
       function populateAgentConfig(form) {
         if (agentConfig) {
@@ -80,11 +68,11 @@
         <label>AI Model</label>
         <select name="model" required
           bind-statement-1="thisElem.disabled = !!#progress">
-          <option value="gemini,gemini-2.0-flash-lite">Gemini 2.0 Flash Lite</option>
+          <option value="gemini,gemini-2.0-flash-lite">Google Gemini 2.0 Flash Lite</option>
           <option value="openai,gpt-4.1-nano">OpenAI GPT-4.1 Nano</option>
-          <option value="claude,claude-3-5-haiku-20241022">Claude 3.5 Haiku</option>
+          <option value="claude,claude-3-5-haiku-20241022">Anthropic Claude 3.5 Haiku</option>
           <option value="deepseek,deepseek-chat">DeepSeek V3</option>
-          <option value="xai,grok-3-mini-fast-beta">xAI Grok-3 Mini Fast</option>
+          <option value="grok,grok-3-mini-fast-beta">xAI Grok-3 Mini Fast</option>
         </select>
       </div>
       <div class="block form-group">

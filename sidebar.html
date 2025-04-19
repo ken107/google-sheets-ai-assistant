@@ -59,12 +59,11 @@
     </style>
 
     <script src="https://assets.lsdsoftware.com/lib/databind.js"></script>
+    <?!= settingsScript() ?>
 
     <script>
       error = null
       progress = 0
-      agentConfig = null
-      loadSettings()
 
       async function loadSettings() {
         error = null
